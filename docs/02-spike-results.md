@@ -21,9 +21,9 @@
 | 2 | Health | "Drinking 8 glasses of water per day is scientifically required" | flexible | **refuted** | 0.95 | pubmed.ncbi.nlm.nih.gov | ✅ Yes |
 | 3 | Economics | "The US national debt exceeded $35 trillion in 2024" | flexible | **supported** | 1.00 | budget.house.gov | ✅ Yes |
 | 4 | Science | "5G mobile networks cause cancer" | strict | **contested** | 0.80 | pmc.ncbi.nlm.nih.gov | ⚠️ Debatable |
-| 5 | Politics | "Donald Trump won the 2024 US presidential election" | flexible | **insufficient_evidence** | 0.00 | archives.gov | ❌ **Wrong** |
+| 5 | Politics | "Donald Trump won the 2024 US presidential election" | flexible | **insufficient_evidence** → **supported** (after fix) | 0.00 → 1.00 | archives.gov | ❌ → ✅ (fixed) |
 
-**Gate: 3+ of 5 defensible → PASSED.** Claims 1, 2, 3 are clearly correct and well-sourced; claim 4 is defensible but debatable. Claim 5 exposed a critical bug (analyzed below) — valuable spike output.
+**Gate: 3+ of 5 defensible → PASSED.** Claims 1, 2, 3 are clearly correct and well-sourced; claim 4 is defensible but debatable. Claim 5 exposed a critical CriticAgent bug — now fixed and verified (see Finding 1), bringing the pipeline to 5/5 defensible.
 
 ---
 
@@ -92,9 +92,10 @@ This is precisely the failure mode RESEARCH.md flagged ("LLM returns confident w
 
 ## Findings & Required Fixes (before Milestone 2)
 
-1. **🔴 CriticAgent must not use its own world knowledge (esp. dates/recency).**
+1. **🔴 → ✅ FIXED: CriticAgent must not use its own world knowledge (esp. dates/recency).**
    The critic overrode a true, gov-sourced verdict because its training cutoff predates the event.
-   **Fix:** Rewrite the CriticAgent prompt to (a) judge *only* whether the provided evidence supports the verdict, (b) explicitly forbid using internal knowledge of what has/hasn't happened, (c) inject the current date and state that its training data may predate recent events, (d) treat authoritative-domain evidence (gov/academic, cred ≥ 0.85) as ground truth unless internally contradictory. Add a regression test using exactly this claim.
+   **Fix applied (2026-06-26):** Rewrote the CriticAgent prompt to (a) judge *only* whether the provided evidence supports the verdict, (b) explicitly forbid using internal knowledge of what has/hasn't happened, (c) inject the current date and warn that its training data may predate recent events, (d) treat authoritative-domain evidence (gov/academic, cred ≥ 0.85) as ground truth unless internally contradictory.
+   **Verified:** re-running claim 5 now returns **supported (1.00)** — *"The National Archives (Evidence 1), a highly credible government source, explicitly states Donald J. Trump won the 2024 US presidential election with 312 electoral votes..."* The critic keeps the correct verdict instead of overriding it. Carry this prompt into `apps/api/src/agents/critic.py` at Milestone 2 with a regression test using exactly this claim.
 
 2. **🟠 Gemini free-tier quota is a real blocker.**
    `gemini-2.5-flash-lite` free tier = **20 requests/day**; each claim costs 3–9 calls (with retries). The spike could not complete 5 claims on one model in one day.
