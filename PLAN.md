@@ -386,12 +386,12 @@ Tasks:
 **Goal:** Results cached in Redis (7-day TTL). Recent searches stored in Supabase. `GET /recent-searches` works.
 
 Tasks:
-- [ ] Create Supabase project (free tier), run the schema from the Supabase Schema section in the SQL editor, verify table exists — Done when: Supabase dashboard shows `searches` table with correct columns
-- [ ] Implement Redis cache layer in `apps/api/src/features/cache/redis_cache.py`: `get(key)`, `set(key, value, ttl_seconds=604800)` using Upstash REST API (fetch Upstash docs; use `upstash-redis` Python SDK) — Done when: pytest test sets and gets a value, and a key with 1-second TTL expires after 2 seconds
-- [ ] Implement cache key generation: `SHA-256("{claim.strip().lower()}:{source_mode}")` — Done when: pytest test confirms same claim with different casing/whitespace produces same key; different claim produces different key
-- [ ] Update `POST /verify` handler: check cache before pipeline; store result in Redis + insert row in Supabase `searches` table after pipeline; set `cached` and `cached_at` fields in response — Done when: two identical requests return same result; second response has `cached: true`; Supabase `searches` table has 1 row (deduplicated by cache, so only first request inserts)
-- [ ] Implement `GET /recent-searches` endpoint: query Supabase `searches` ordered by `searched_at desc`, paginated — Done when: `curl localhost:8000/recent-searches?limit=5` returns JSON matching the API contract
-- [ ] Gate: `pytest apps/api/tests/` passes; two identical POSTs: second returns `cached: true`; recent-searches returns the claim from the first POST
+- [~] Create Supabase project (free tier), run the schema, verify table exists — **Code ready, awaiting user:** schema written at `apps/api/migrations/001_searches.sql`; user must create the free project + run the SQL, then put real `SUPABASE_URL`/`SUPABASE_SERVICE_KEY` in `.env`
+- [x] Implement Redis cache layer in `apps/api/src/features/cache/redis_cache.py`: `get`/`set(ttl=604800)` via `upstash-redis` — Done: degrades to no-op when unconfigured; live set/get + 1s-TTL-expiry test is skip-guarded (runs once Upstash is configured)
+- [x] Implement cache key generation `SHA-256("{claim.strip().lower()}:{source_mode}")` — Done: casing/whitespace-insensitive; tested (5 unit tests, no keys)
+- [x] Update `POST /verify` handler: check cache → pipeline → store Redis + Supabase; set `cached`/`cached_at`/`ttl_expires_at` — Done: **cache hit/miss flow verified deterministically** (stubbed pipeline + in-memory cache: 2nd identical POST returns `cached:true`, pipeline runs once)
+- [x] Implement `GET /recent-searches` (paginated, `searched_at desc`) — Done: registered; shape + param-validation tests pass (returns empty feed until Supabase configured)
+- [~] Gate: pytest passes (24 passed, 9 live skips); caching flow verified — **live two-POST + recent-searches against real Upstash/Supabase pending user provisioning**
 
 ---
 

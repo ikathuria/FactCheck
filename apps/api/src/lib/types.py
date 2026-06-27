@@ -67,3 +67,21 @@ class VerifyResponse(BaseModel):
     sub_claims: list[str] = Field(default_factory=list)
     source_mode: SourceMode = SourceMode.flexible
     source_mode_fallback: bool = False
+
+
+class RecentSearch(BaseModel):
+    """A single row in the recent-searches feed."""
+
+    id: str
+    claim: str
+    verdict: VerdictEnum
+    confidence: float = Field(ge=0.0, le=1.0)
+    source_mode: SourceMode
+    searched_at: datetime
+
+
+class RecentSearchesResponse(BaseModel):
+    """GET /recent-searches response body."""
+
+    searches: list[RecentSearch] = Field(default_factory=list)
+    total: int = 0

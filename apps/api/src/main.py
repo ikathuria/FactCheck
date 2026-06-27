@@ -46,6 +46,8 @@ def health() -> dict[str, str]:
 
 
 # Feature routers
+from .features.history.router import router as history_router  # noqa: E402
 from .features.verify.router import router as verify_router  # noqa: E402
 
 app.include_router(verify_router)
+app.include_router(history_router)

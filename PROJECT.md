@@ -145,15 +145,19 @@ factcheck/
 | 0. Spike | ✅ done | Pipeline proven: 5/5 verdicts defensible after critic fix. See [docs/02-spike-results.md](docs/02-spike-results.md) |
 | 1. Scaffold | ✅ done | Both apps run locally; CI configured; lint/typecheck/test/health all green |
 | 2. Core Pipeline | ✅ done | 5-agent LangGraph wired; POST /verify end-to-end; 20/20 tests pass (live), CI-safe |
-| 3. Cache + Storage | ☐ todo | Redis + Supabase |
+| 3. Cache + Storage | 🟡 code-complete | Redis cache + Supabase history + GET /recent-searches built; degrades gracefully. Live gate pending user provisioning of Upstash + Supabase (run apps/api/migrations/001_searches.sql) |
 | 4. Frontend | ☐ todo | Next.js full flow |
 | 5. Deploy | ☐ todo | Render + Vercel |
 | 6. Polish | ☐ todo | Error states, mobile, README |
 
-**In progress now:** Milestones 0–2 complete — full pipeline runs end-to-end via POST /verify
-**Next up:** Milestone 3 (Cache + Storage). Add Redis (Upstash) 7-day-TTL caching keyed by
-  SHA-256("{claim.lower().strip()}:{source_mode}"), persist summaries to Supabase `searches`,
-  and add GET /recent-searches. Then Milestone 4 (frontend).
+**In progress now:** Milestones 0–2 done; M3 code-complete (caching/history/recent-searches built,
+  graceful degradation, caching flow tested). Next live work needs external services.
+**Next up:**
+  1. USER ACTION to finish M3 live gate: create a free Upstash Redis DB and a free Supabase project,
+     run `apps/api/migrations/001_searches.sql` in Supabase SQL editor, and put the real
+     UPSTASH_REDIS_REST_URL/TOKEN + SUPABASE_URL/SERVICE_KEY in `.env` (currently still the
+     .env.example placeholder comments). Then two identical POSTs → 2nd `cached:true`.
+  2. Milestone 4 (frontend) — can proceed in parallel; doesn't need Redis/Supabase.
 
 Open items / deferred:
   - 🟠 Gemini quota/provider: LLM client is provider-agnostic (env GEMINI_MODEL / future LLM_*),
