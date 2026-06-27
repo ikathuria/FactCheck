@@ -353,14 +353,14 @@ Tasks:
 **Goal:** Both apps run locally, folder structure in place, all dependencies installed, context trackers created.
 
 Tasks:
-- [ ] Create `apps/api/` Python project: `pyproject.toml`, `requirements.txt` (fastapi, uvicorn, langgraph, langchain-google-genai, tavily-python, upstash-redis, supabase, pytest, python-dotenv — pin current versions), `src/` layout per Project Structure — Done when: `cd apps/api && uvicorn src.main:app --reload` starts with `{"status":"ok"}` at `/health`
-- [ ] Create `apps/web/` Next.js project (TypeScript, Tailwind, App Router): verify current Next.js stable version before `npx create-next-app` — Done when: `npm --prefix apps/web run dev` starts and `localhost:3000` loads
-- [ ] Set up root `package.json` with delegating scripts (`dev`, `lint`, `test` calling `npm --prefix apps/web run`) — Done when: `npm run dev` at root starts the web app
-- [ ] Create `.env.example` with all variables from the Environment Variables section — Done when: file committed, `.env` files in `.gitignore`
-- [ ] Set up GitHub Actions CI: `.github/workflows/ci.yml` — lint + typecheck + test for both apps on push/PR — Done when: workflow file committed and passes on an empty push
-- [ ] Create `PROJECT.md` from project-template with current stack+versions, architecture bullets, structure tree, conventions — Done when: file committed and describes the project accurately
-- [ ] Add root `CLAUDE.md` with content: `See PROJECT.md for project context.` — Done when: committed
-- [ ] Gate: `npm run lint` and `npm run test` pass; API health check returns 200; Next.js dev starts clean
+- [x] Create `apps/api/` Python project: `pyproject.toml`, `requirements.txt` (pinned current versions), `src/` layout per Project Structure — Done: `uvicorn src.main:app` serves `{"status":"ok"}` at `/health` (smoke-tested)
+- [x] Create `apps/web/` Next.js project (TypeScript, Tailwind, App Router) — Done: Next.js **16.2.9** (current stable; PLAN said 15.x — used latest per verify rule), React 19.2.4. `localhost:3000` returns 200
+- [x] Set up root `package.json` with delegating scripts (`dev`, `lint`, `typecheck`, `test`) — Done: `npm run dev/lint/typecheck/test` at root delegate to web
+- [x] Create `.env.example` with all variables — Done: committed; `.env`/`.env.local` in `.gitignore`
+- [x] Set up GitHub Actions CI: `.github/workflows/ci.yml` — Done: two jobs (api: ruff+pytest; web: lint+typecheck+build) on push/PR to main
+- [x] Create `PROJECT.md` — Done: already present, kept in sync
+- [x] Add root `CLAUDE.md` with content `See PROJECT.md for project context.` — Done: present
+- [x] Gate: `npm run lint`, `npm run typecheck`, `npm run test` pass; ruff + pytest pass; `/health` returns 200; Next.js dev starts clean — **all pass**
 
 ---
 

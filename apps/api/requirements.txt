@@ -1,0 +1,21 @@
+# Web framework
+fastapi==0.136.1
+uvicorn[standard]==0.46.0
+
+# Agent orchestration + LLM + search
+langgraph==1.0.9
+langchain-core==1.2.15
+langchain-google-genai==4.2.1
+tavily-python==0.7.23
+
+# Cache + storage
+upstash-redis==1.7.0
+supabase==2.31.0
+
+# Config + validation
+pydantic==2.12.5
+python-dotenv==1.0.1
+
+# Testing
+pytest==8.2.2
+httpx==0.28.1

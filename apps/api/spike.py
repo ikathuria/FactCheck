@@ -11,16 +11,17 @@ Requires a .env file at apps/api/.env (or set env vars directly):
     TAVILY_API_KEY=...
 """
 
-import sys
-import os
-import json
-import re
 import argparse
+import json
+import os
+import re
+import sys
 from pathlib import Path
 from typing import TypedDict
 
 # Load .env from apps/api/.env or repo root, whichever exists
 from dotenv import load_dotenv
+
 for env_file in (Path(__file__).parent / ".env", Path(__file__).parents[2] / ".env"):
     if env_file.exists():
         load_dotenv(env_file)
@@ -33,16 +34,15 @@ if not GEMINI_API_KEY or not TAVILY_API_KEY:
     print("ERROR: Set GEMINI_API_KEY and TAVILY_API_KEY in apps/api/.env or environment.")
     sys.exit(1)
 
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage
-from langgraph.graph import StateGraph, START, END
-from tavily import TavilyClient
-
 # ---------------------------------------------------------------------------
 # Clients
 # ---------------------------------------------------------------------------
-
 import time
+
+from langchain_core.messages import HumanMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langgraph.graph import END, START, StateGraph
+from tavily import TavilyClient
 
 # Model is overridable via GEMINI_MODEL env var or --model CLI flag.
 # Note: gemini-2.5-flash-lite free-tier daily quota is only 20 requests/day,

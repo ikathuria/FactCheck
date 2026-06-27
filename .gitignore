@@ -427,3 +427,20 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# ---------------------------------------------------------------------------
+# FactCheck project-specific
+# ---------------------------------------------------------------------------
+
+# Python virtualenvs & tooling caches
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Env files (in addition to *.env above — covers Next.js .env.local variants)
+.env
+.env.local
+.env.*.local
+

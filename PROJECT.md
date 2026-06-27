@@ -18,7 +18,7 @@ FactCheck is an open-source, domain-agnostic fact-checking platform for the gene
 
 | Layer | Choice | Version | Notes |
 |---|---|---|---|
-| Frontend framework | Next.js | 15.x (verify before coding) | App Router, TypeScript, Vercel free tier |
+| Frontend framework | Next.js | 16.2.9 (React 19.2.4) | App Router, TypeScript, src-dir, Vercel free tier. NOTE: Next 16 has breaking changes — see apps/web/AGENTS.md (read node_modules/next/dist/docs/ before frontend coding) |
 | Frontend styling | Tailwind CSS | 4.x (verify before coding) | |
 | Backend framework | FastAPI | 0.115.x (verify before coding) | Python 3.12, async |
 | Agent orchestration | LangGraph | 1.2.6 (confirmed June 2026) | v1.0 shipped Oct 2025 — avoid pre-1.0 tutorials |
@@ -142,20 +142,23 @@ factcheck/
 
 | Milestone | Status | Notes |
 |---|---|---|
-| 0. Spike | ✅ done | Pipeline proven: 4/5 verdicts defensible (gate: 3+). See [docs/02-spike-results.md](docs/02-spike-results.md) |
-| 1. Scaffold | ☐ todo | Both apps running locally |
+| 0. Spike | ✅ done | Pipeline proven: 5/5 verdicts defensible after critic fix. See [docs/02-spike-results.md](docs/02-spike-results.md) |
+| 1. Scaffold | ✅ done | Both apps run locally; CI configured; lint/typecheck/test/health all green |
 | 2. Core Pipeline | ☐ todo | POST /verify end-to-end |
 | 3. Cache + Storage | ☐ todo | Redis + Supabase |
 | 4. Frontend | ☐ todo | Next.js full flow |
 | 5. Deploy | ☐ todo | Render + Vercel |
 | 6. Polish | ☐ todo | Error states, mobile, README |
 
-**In progress now:** Milestone 0 complete — spike validated the pipeline
-**Next up:** Milestone 1 (Scaffold). Carry two spike findings into Milestone 2:
-  (1) 🔴 Rewrite CriticAgent prompt so it judges only the provided evidence and never its own
-      world-knowledge/recency prior (it wrongly overrode a true, gov-sourced 2024-election verdict);
-  (2) 🟠 Resolve Gemini free-tier quota — flash-lite free tier is only 20 req/day; decide paid key
-      vs. fewer LLM calls per claim. See [docs/02-spike-results.md](docs/02-spike-results.md).
+**In progress now:** Milestones 0 + 1 complete — pipeline validated, both apps scaffolded & green
+**Next up:** Milestone 2 (Core Pipeline — FastAPI + LangGraph). Port the spike's agents into
+  `apps/api/src/agents/`, wire the LangGraph in `features/verify/pipeline.py`, expose `POST /verify`.
+  Carry forward:
+  (1) ✅ CriticAgent recency-prior fix (verified in spike) — reuse the fixed prompt + add a
+      regression test using "Donald Trump won the 2024 US presidential election" → supported;
+  (2) 🟠 Gemini quota/provider decision deferred by user ("look at LLM later") — build the LLM client
+      provider-agnostic (env-driven model) so Gemini/Grok/Claude is a config swap. flash-lite free
+      tier on the current key caps at ~20 req/day; a clean free-tier key should give ~1,500/day.
 
 ---
 

@@ -1,0 +1,24 @@
+[project]
+name = "factcheck-api"
+version = "0.1.0"
+description = "FactCheck FastAPI backend — 5-agent LangGraph fact-checking pipeline"
+requires-python = ">=3.12"
+readme = "../../README.md"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+# spike.py is the Milestone 0 throwaway: it intentionally loads .env and
+# validates keys before importing heavy libs (E402), and embeds long prompt
+# strings (E501). Kept as a committed artifact, not part of the app surface.
+"spike.py" = ["E402", "E501"]
