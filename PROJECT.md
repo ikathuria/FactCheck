@@ -144,21 +144,22 @@ factcheck/
 |---|---|---|
 | 0. Spike | ✅ done | Pipeline proven: 5/5 verdicts defensible after critic fix. See [docs/02-spike-results.md](docs/02-spike-results.md) |
 | 1. Scaffold | ✅ done | Both apps run locally; CI configured; lint/typecheck/test/health all green |
-| 2. Core Pipeline | ☐ todo | POST /verify end-to-end |
+| 2. Core Pipeline | ✅ done | 5-agent LangGraph wired; POST /verify end-to-end; 20/20 tests pass (live), CI-safe |
 | 3. Cache + Storage | ☐ todo | Redis + Supabase |
 | 4. Frontend | ☐ todo | Next.js full flow |
 | 5. Deploy | ☐ todo | Render + Vercel |
 | 6. Polish | ☐ todo | Error states, mobile, README |
 
-**In progress now:** Milestones 0 + 1 complete — pipeline validated, both apps scaffolded & green
-**Next up:** Milestone 2 (Core Pipeline — FastAPI + LangGraph). Port the spike's agents into
-  `apps/api/src/agents/`, wire the LangGraph in `features/verify/pipeline.py`, expose `POST /verify`.
-  Carry forward:
-  (1) ✅ CriticAgent recency-prior fix (verified in spike) — reuse the fixed prompt + add a
-      regression test using "Donald Trump won the 2024 US presidential election" → supported;
-  (2) 🟠 Gemini quota/provider decision deferred by user ("look at LLM later") — build the LLM client
-      provider-agnostic (env-driven model) so Gemini/Grok/Claude is a config swap. flash-lite free
-      tier on the current key caps at ~20 req/day; a clean free-tier key should give ~1,500/day.
+**In progress now:** Milestones 0–2 complete — full pipeline runs end-to-end via POST /verify
+**Next up:** Milestone 3 (Cache + Storage). Add Redis (Upstash) 7-day-TTL caching keyed by
+  SHA-256("{claim.lower().strip()}:{source_mode}"), persist summaries to Supabase `searches`,
+  and add GET /recent-searches. Then Milestone 4 (frontend).
+
+Open items / deferred:
+  - 🟠 Gemini quota/provider: LLM client is provider-agnostic (env GEMINI_MODEL / future LLM_*),
+    so Gemini/Grok/Claude is a config swap. flash-lite free tier on the current key caps at
+    ~20 req/day (heavy spike+test usage drains it; a clean free-tier key gives ~1,500/day).
+    Tests/curl today used GEMINI_MODEL=gemini-2.5-flash. User chose to revisit LLM later.
 
 ---
 

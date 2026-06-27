@@ -368,17 +368,17 @@ Tasks:
 **Goal:** `POST /verify` runs the 5-agent pipeline end-to-end and returns a VerifyResponse. No caching yet.
 
 Tasks:
-- [ ] Define shared Pydantic models in `apps/api/src/lib/types.py`: `VerifyRequest`, `VerifyResponse`, `Source`, `VerdictEnum` — Done when: `python -c "from src.lib.types import VerifyResponse"` succeeds
-- [ ] Implement Gemini client singleton in `apps/api/src/lib/gemini.py` (fetch latest langchain-google-genai docs before writing) — Done when: `pytest tests/test_gemini.py` passes with a live API call returning a non-empty string
-- [ ] Implement Tavily client in `apps/api/src/lib/tavily.py` with `search(query, source_mode)` — strict mode applies domain allowlist filter; flexible returns all results — Done when: `pytest tests/test_tavily.py` passes for both modes returning ≥1 result each
-- [ ] Build `ClaimDecomposer` agent in `apps/api/src/agents/claim_decomposer.py`: takes claim string, returns list of 1–4 sub-claims — Done when: pytest test passes on 3 sample claims
-- [ ] Build `EvidenceRetriever` agent in `apps/api/src/agents/evidence_retriever.py`: takes sub-claims list + source_mode, runs Tavily search per sub-claim, returns evidence chunks — Done when: pytest test returns ≥1 evidence chunk per sub-claim
-- [ ] Build `SourceScorer` agent in `apps/api/src/agents/source_scorer.py`: scores sources by domain type, filters below 0.4 — Done when: pytest test correctly scores `.gov` as 1.0 and an unknown blog as 0.4
-- [ ] Build `SynthesisAgent` in `apps/api/src/agents/synthesis.py`: Gemini prompt taking claim + evidence, returns verdict/confidence/reasoning — Done when: pytest test on canned evidence returns a valid VerdictEnum value and confidence between 0–1
-- [ ] Build `CriticAgent` in `apps/api/src/agents/critic.py`: reviews synthesis output; overrides to `insufficient_evidence` if confidence < 0.5; overrides to `contested` if evidence contradicts — Done when: pytest test with conflicting evidence returns `contested`; test with confidence 0.3 returns `insufficient_evidence`
-- [ ] Wire agents into LangGraph graph in `apps/api/src/features/verify/pipeline.py` (study Sift's graph definition; fetch LangGraph docs before coding) — Done when: `pipeline.run(claim="...", source_mode="flexible")` returns a `VerifyResponse` without error
-- [ ] Expose `POST /verify` endpoint in `apps/api/src/features/verify/router.py`, register in `main.py` — Done when: `curl -X POST localhost:8000/verify -H "Content-Type: application/json" -d '{"claim":"The Eiffel Tower is in London","source_mode":"flexible"}'` returns a VerifyResponse JSON with `verdict: "refuted"` or `"insufficient_evidence"`
-- [ ] Gate: `pytest apps/api/tests/` passes; lint passes; manual curl test returns valid VerifyResponse
+- [x] Define shared Pydantic models in `apps/api/src/lib/types.py`: `VerifyRequest`, `VerifyResponse`, `Source`, `VerdictEnum` (+ `SourceMode`, `DomainType`) — Done: import + validation tests pass
+- [x] Implement LLM client singleton in `apps/api/src/lib/gemini.py` — Done: provider-agnostic (env-driven model), `invoke()` with backoff + `invoke_json()`. Live test passes
+- [x] Implement Tavily client in `apps/api/src/lib/tavily.py` with `search(query, source_mode)` — Done: strict applies allowlist, flexible all results; both modes return ≥1 (live test)
+- [x] Build `ClaimDecomposer` — Done: returns 1–4 sub-claims, degrades to [claim] on failure (live test)
+- [x] Build `EvidenceRetriever` — Done: Tavily per sub-claim, dedup, strict→flexible fallback flag (live test)
+- [x] Build `SourceScorer` — Done: `.gov`=1.0, `.edu`=0.85, news=0.7, blog=0.4; filters <0.4; sorts (unit test, no keys)
+- [x] Build `SynthesisAgent` — Done: returns valid VerdictEnum + confidence 0–1 on canned evidence (live test)
+- [x] Build `CriticAgent` — Done: carries M0 recency-prior fix; confidence<0.5→insufficient (deterministic, unit-tested no keys); conflicting evidence→contested (live test)
+- [x] Wire agents into LangGraph in `apps/api/src/features/verify/pipeline.py` — Done: `run()` returns VerifyResponse; graph compiles/invokes
+- [x] Expose `POST /verify` in `features/verify/router.py`, registered in `main.py` — Done: e2e TestClient test returns 200 + valid VerifyResponse (refuted/insufficient for Eiffel-in-London), `cached: false`
+- [x] Gate: pytest passes (20/20 live; CI-safe skips without keys); ruff passes; e2e endpoint validated — **all pass**
 
 ---
 

@@ -43,3 +43,9 @@ app.add_middleware(
 def health() -> dict[str, str]:
     """Liveness probe — used for Render keep-alive and smoke testing."""
     return {"status": "ok"}
+
+
+# Feature routers
+from .features.verify.router import router as verify_router  # noqa: E402
+
+app.include_router(verify_router)
