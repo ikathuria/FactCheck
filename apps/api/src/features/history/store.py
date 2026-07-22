@@ -1,37 +1,19 @@
-"""Supabase persistence for the recent-searches feed.
+"""Turso (libSQL) persistence for the recent-searches feed.
 
-Degrades gracefully: when SUPABASE_URL/SERVICE_KEY are not configured, inserts
-are no-ops and recent_searches returns empty, so the rest of the API works
-without the history backend.
-
-Env:
-    SUPABASE_URL          https://<project>.supabase.co
-    SUPABASE_SERVICE_KEY  service role key (server-side only)
+Uses the shared client in `lib.turso`. Degrades gracefully: when Turso is not
+configured, inserts are no-ops and recent_searches returns empty, so the rest of
+the API works without the history backend.
 """
 
-import os
+import uuid
+from datetime import datetime, timezone
 
+from ...lib import turso
 from ...lib.types import SourceMode, VerdictEnum
-
-_client = None
 
 
 def is_configured() -> bool:
-    url = os.environ.get("SUPABASE_URL", "")
-    key = os.environ.get("SUPABASE_SERVICE_KEY", "")
-    return url.startswith("http") and bool(key)
-
-
-def _get_client():
-    global _client
-    if _client is None:
-        from supabase import create_client
-
-        _client = create_client(
-            os.environ["SUPABASE_URL"],
-            os.environ["SUPABASE_SERVICE_KEY"],
-        )
-    return _client
+    return turso.is_configured()
 
 
 def insert_search(
@@ -46,15 +28,22 @@ def insert_search(
     if not is_configured():
         return
     mode = source_mode.value if isinstance(source_mode, SourceMode) else str(source_mode)
-    row = {
-        "claim": claim,
-        "claim_hash": claim_hash,
-        "verdict": verdict.value if isinstance(verdict, VerdictEnum) else str(verdict),
-        "confidence": confidence,
-        "source_mode": mode,
-    }
+    v = verdict.value if isinstance(verdict, VerdictEnum) else str(verdict)
     try:
-        _get_client().table("searches").insert(row).execute()
+        turso.get_client().execute(
+            "INSERT INTO searches "
+            "(id, claim, claim_hash, verdict, confidence, source_mode, searched_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [
+                uuid.uuid4().hex,
+                claim,
+                claim_hash,
+                v,
+                confidence,
+                mode,
+                datetime.now(timezone.utc).isoformat(),
+            ],
+        )
     except Exception:  # noqa: BLE001 — history write is best-effort
         return
 
@@ -64,14 +53,13 @@ def recent_searches(limit: int = 20, offset: int = 0) -> tuple[list[dict], int]:
     if not is_configured():
         return [], 0
     try:
-        client = _get_client()
-        resp = (
-            client.table("searches")
-            .select("id, claim, verdict, confidence, source_mode, searched_at", count="exact")
-            .order("searched_at", desc=True)
-            .range(offset, offset + limit - 1)
-            .execute()
+        client = turso.get_client()
+        rs = client.execute(
+            "SELECT id, claim, verdict, confidence, source_mode, searched_at "
+            "FROM searches ORDER BY searched_at DESC LIMIT ? OFFSET ?",
+            [limit, offset],
         )
-        return resp.data or [], resp.count or 0
+        total = client.execute("SELECT COUNT(*) AS n FROM searches").rows[0]["n"]
+        return [row.asdict() for row in rs.rows], int(total)
     except Exception:  # noqa: BLE001
         return [], 0

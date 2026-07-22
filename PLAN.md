@@ -10,7 +10,7 @@
 |---|---|
 | **Market** | crowded-with-gap — serious players (Full Fact, Factiverse) target journalists/enterprise only; no polished open-source consumer tool exists |
 | **Feasibility** | medium — spike is LLM verdict reliability on uncurated live-web search; orchestration and retrieval are solved |
-| **Free to build** | yes — $0/month prototype (Gemini free tier + Tavily 1k free searches + Upstash Redis free + Supabase free + Render free + Vercel free) |
+| **Free to build** | yes — $0/month prototype (Gemini free tier + Tavily 1k free searches + Turso free + Render free + Vercel free) |
 | **Monetization** | portfolio / open source — not applicable |
 
 See [RESEARCH.md](RESEARCH.md) for full competitor analysis, community signals, and feasibility audit.
@@ -39,7 +39,7 @@ See [RESEARCH.md](RESEARCH.md) for full competitor analysis, community signals, 
 Sift (https://dev.to/ashg2099/i-built-an-open-source-multi-agent-fact-checker-heres-how-it-works-5eah) is the nearest open-source analog. Study before building:
 - **Reuse:** 5-agent LangGraph pattern (ClaimDecomposer → EvidenceRetriever → SourceScorer → SynthesisAgent → CriticAgent)
 - **Reuse:** LangGraph conditional branching for agent routing
-- **Adapt:** swap LLaMA 3.3 70B → Gemini 2.5 Flash-Lite; remove Celery (use FastAPI async); remove pgvector (real-time RAG doesn't need pre-indexed embeddings); add Redis result caching layer; add source-mode toggle (strict vs. flexible)
+- **Adapt:** swap LLaMA 3.3 70B → Gemini 2.5 Flash-Lite; remove Celery (use FastAPI async); remove pgvector (real-time RAG doesn't need pre-indexed embeddings); add a Turso result caching layer; add source-mode toggle (strict vs. flexible)
 
 ### Monetization
 Portfolio / open source — not applicable.
@@ -51,7 +51,7 @@ Portfolio / open source — not applicable.
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
 | LLM returns confident wrong verdict | high | high | Never show binary TRUE/FALSE; always show confidence level + "insufficient evidence" option; always surface raw sources |
-| Tavily free tier (1k/mo) exhausted quickly | medium | medium | Cache all results in Redis with 1-week TTL; same query never re-runs pipeline within TTL window |
+| Tavily free tier (1k/mo) exhausted quickly | medium | medium | Cache all results in Turso with 1-week TTL; same query never re-runs pipeline within TTL window |
 | Gemini free tier rate-limited | medium | low | Implement retry with exponential backoff; Gemini 2.5 Flash-Lite is very cheap at pay-as-you-go ($0.10/1M tokens) |
 | Render free tier cold starts (slow first load) | high | low | Show loading state on frontend; keep API warm with lightweight health-check pings |
 | Political bias perception | medium | high | Never show verdict labels ("TRUE"/"FALSE"); show sources + confidence + reasoning; let users decide |
@@ -73,8 +73,7 @@ Portfolio / open source — not applicable.
 | Agent orchestration | LangGraph | 1.2.6 (confirmed June 2026) | Multi-agent conditional routing; v1.0 shipped Oct 2025 |
 | LLM | Gemini 2.5 Flash-Lite via langchain-google-genai | latest (verify: ai.google.dev) | User has Gemini API key; free tier + cheap PAYG |
 | Web search / RAG | Tavily Python SDK | latest (verify: docs.tavily.com) | No credit card for free tier; 1k free searches/mo; used in Sift |
-| Result cache | Upstash Redis | serverless (verify: upstash.com/docs) | Native TTL support; free tier; serverless (no always-on host needed) |
-| Search history DB | Supabase (Postgres) | free tier (verify: supabase.com/docs) | Persistent recent searches feed; free tier; easy setup |
+| Cache + history DB | Turso (libSQL) | libsql-client 0.3.1 (verify: docs.turso.tech) | Single DB for result cache + recent-searches feed; free tier; edge-friendly. TTL emulated in-app (SQLite has no native key expiry) |
 | Frontend hosting | Vercel | free tier | Git-integrated auto-deploy for Next.js |
 | Backend hosting | Render | free tier | Free web services; cold-start acceptable for prototype |
 | Testing (backend) | pytest | 8.x (verify: docs.pytest.org) | Standard Python testing |
@@ -86,7 +85,7 @@ Portfolio / open source — not applicable.
 - Payments — open source portfolio
 - Email — no notifications
 - File storage — no file uploads
-- Celery/background workers — FastAPI async handles pipeline; Redis for caching is sufficient at prototype scale
+- Celery/background workers — FastAPI async handles pipeline; the Turso result cache is sufficient at prototype scale
 
 ---
 
@@ -105,11 +104,12 @@ factcheck/                    # repo root
 │   │   │   │   └── critic.py
 │   │   │   ├── features/
 │   │   │   │   ├── verify/   # pipeline orchestration + /verify endpoint
-│   │   │   │   ├── cache/    # Redis cache layer (get/set with TTL)
-│   │   │   │   └── history/  # Supabase recent-searches CRUD
+│   │   │   │   ├── cache/    # Turso result cache (get/set, app-enforced TTL)
+│   │   │   │   └── history/  # Turso recent-searches CRUD
 │   │   │   ├── lib/
 │   │   │   │   ├── gemini.py     # Gemini client singleton
 │   │   │   │   ├── tavily.py     # Tavily client + source-mode filter
+│   │   │   │   ├── turso.py      # shared libSQL client (cache + history)
 │   │   │   │   └── types.py      # shared Pydantic models
 │   │   │   └── main.py           # FastAPI app, CORS, route registration
 │   │   ├── tests/
@@ -154,10 +154,8 @@ factcheck/                    # repo root
 # Backend (apps/api/.env)
 GEMINI_API_KEY=           # Google AI Studio — aistudio.google.com
 TAVILY_API_KEY=           # Tavily — app.tavily.com (no card required)
-UPSTASH_REDIS_REST_URL=   # Upstash dashboard — upstash.com
-UPSTASH_REDIS_REST_TOKEN= # Upstash dashboard
-SUPABASE_URL=             # Supabase project settings
-SUPABASE_SERVICE_KEY=     # Supabase project settings (service role key, not anon)
+TURSO_DATABASE_URL=       # Turso — turso.tech (libsql://<db>-<org>.turso.io)
+TURSO_AUTH_TOKEN=         # Turso — `turso db tokens create <db>`
 ALLOWED_ORIGINS=          # comma-separated: http://localhost:3000,https://your-vercel-url.vercel.app
 
 # Frontend (apps/web/.env.local)
@@ -279,32 +277,41 @@ CriticAgent (Gemini)
 
 ---
 
-## Result Caching (Redis, TTL = 7 days)
+## Result Caching (Turso `cache` table, TTL = 7 days)
 
 - **Cache key:** `SHA-256("{claim.strip().lower()}:{source_mode}")`
-- **On request:** check Redis first. If hit and not expired, return cached result with `cached: true`
-- **On miss:** run full pipeline, store result in Redis with 7-day TTL, store summary in Supabase `searches` table, return result with `cached: false`
-- **Recent searches feed:** read from Supabase `searches` table (persists beyond Redis TTL for history display, but response content comes from Redis while valid)
-- **Cache invalidation:** no manual invalidation — TTL handles staleness. 7 days chosen because immigration policy, political facts, and government metrics change frequently enough that older results should re-run.
+- **On request:** query the Turso `cache` table first (`WHERE key = ? AND expires_at > now`). If a live row exists, return it with `cached: true`
+- **On miss:** run full pipeline, upsert result into `cache` with `expires_at = now + 7d`, store summary in the Turso `searches` table, return result with `cached: false`
+- **Recent searches feed:** read from the `searches` table (permanent record; persists beyond the cache TTL for history display)
+- **TTL / invalidation:** SQLite has no native key expiry, so TTL is enforced in-app — reads filter on `expires_at` and each write sweeps expired rows. No manual invalidation. 7 days chosen because immigration policy, political facts, and government metrics change frequently enough that older results should re-run.
 
 ---
 
-## Supabase Schema
+## Turso Schema (libSQL / SQLite)
+
+Full schema lives in `apps/api/migrations/001_init.sql`. Apply with `turso db shell <db> < apps/api/migrations/001_init.sql`.
 
 ```sql
--- searches table: permanent record for recent-searches feed
-create table searches (
-  id uuid primary key default gen_random_uuid(),
-  claim text not null,
-  claim_hash text not null,         -- SHA-256 cache key
-  verdict text not null,            -- supported | refuted | insufficient_evidence | contested
-  confidence float not null,
-  source_mode text not null,        -- strict | flexible
-  searched_at timestamptz not null default now()
+-- result cache: TTL enforced in-app via expires_at (unix epoch seconds)
+create table if not exists cache (
+  key         text primary key,   -- SHA-256 cache key
+  value       text not null,       -- VerifyResponse as JSON
+  expires_at  integer not null
 );
+create index if not exists cache_expires_at_idx on cache (expires_at);
 
-create index searches_searched_at_idx on searches (searched_at desc);
-create index searches_claim_hash_idx on searches (claim_hash);
+-- searches: permanent record for the recent-searches feed
+create table if not exists searches (
+  id          text primary key,    -- app-generated uuid4 hex
+  claim       text not null,
+  claim_hash  text not null,        -- SHA-256 cache key
+  verdict     text not null,        -- supported | refuted | insufficient_evidence | contested
+  confidence  real not null,
+  source_mode text not null,        -- strict | flexible
+  searched_at text not null         -- ISO 8601 UTC timestamp
+);
+create index if not exists searches_searched_at_idx on searches (searched_at desc);
+create index if not exists searches_claim_hash_idx on searches (claim_hash);
 ```
 
 ---
@@ -383,15 +390,15 @@ Tasks:
 ---
 
 ### Milestone 3: Cache + Storage
-**Goal:** Results cached in Redis (7-day TTL). Recent searches stored in Supabase. `GET /recent-searches` works.
+**Goal:** Results cached in Turso (7-day TTL). Recent searches stored in Turso. `GET /recent-searches` works.
 
 Tasks:
-- [~] Create Supabase project (free tier), run the schema, verify table exists — **Code ready, awaiting user:** schema written at `apps/api/migrations/001_searches.sql`; user must create the free project + run the SQL, then put real `SUPABASE_URL`/`SUPABASE_SERVICE_KEY` in `.env`
-- [x] Implement Redis cache layer in `apps/api/src/features/cache/redis_cache.py`: `get`/`set(ttl=604800)` via `upstash-redis` — Done: degrades to no-op when unconfigured; live set/get + 1s-TTL-expiry test is skip-guarded (runs once Upstash is configured)
+- [x] Create a Turso database (free tier), run the schema, verify tables exist — Done: DB `factcheck` created (group `default`, aws-us-east-1); `apps/api/migrations/001_init.sql` applied; `cache` + `searches` tables confirmed; `TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN` written to `apps/api/.env` (gitignored)
+- [x] Implement Turso cache layer in `apps/api/src/features/cache/turso_cache.py`: `get`/`set(ttl=604800)` via `libsql-client`, TTL emulated with `expires_at` — Done: degrades to no-op when unconfigured; live set/get + 1s-TTL-expiry test is skip-guarded (runs once Turso is configured). Storage logic verified against a real libSQL DB.
 - [x] Implement cache key generation `SHA-256("{claim.strip().lower()}:{source_mode}")` — Done: casing/whitespace-insensitive; tested (5 unit tests, no keys)
-- [x] Update `POST /verify` handler: check cache → pipeline → store Redis + Supabase; set `cached`/`cached_at`/`ttl_expires_at` — Done: **cache hit/miss flow verified deterministically** (stubbed pipeline + in-memory cache: 2nd identical POST returns `cached:true`, pipeline runs once)
-- [x] Implement `GET /recent-searches` (paginated, `searched_at desc`) — Done: registered; shape + param-validation tests pass (returns empty feed until Supabase configured)
-- [~] Gate: pytest passes (24 passed, 9 live skips); caching flow verified — **live two-POST + recent-searches against real Upstash/Supabase pending user provisioning**
+- [x] Update `POST /verify` handler: check cache → pipeline → store Turso cache + Turso searches; set `cached`/`cached_at`/`ttl_expires_at` — Done: **cache hit/miss flow verified deterministically** (stubbed pipeline + in-memory cache: 2nd identical POST returns `cached:true`, pipeline runs once)
+- [x] Implement `GET /recent-searches` (paginated, `searched_at desc`) — Done: registered; shape + param-validation tests pass (returns empty feed until Turso configured)
+- [x] Gate: pytest passes (non-live suite green; live tests skip-guarded); caching flow verified — Done: **cache roundtrip + 7-day-TTL expiry + history insert/recent verified live against the provisioned Turso cloud DB** (test rows cleaned up). Full HTTP two-POST → `cached:true` smoke runs against the live server at deploy (M5).
 
 ---
 
@@ -420,7 +427,7 @@ Tasks:
 - [ ] Deploy Next.js to Vercel: connect GitHub repo, set `NEXT_PUBLIC_API_URL` to Render URL in Vercel env vars, set root directory to `apps/web` — Done when: `https://<your-app>.vercel.app` loads home page
 - [ ] Update `ALLOWED_ORIGINS` in Render env vars to include the Vercel URL — Done when: CORS no longer blocks requests from the Vercel frontend
 - [ ] Update `NEXT_PUBLIC_API_URL` in Vercel to production Render URL; re-deploy — Done when: submitting a claim on the Vercel URL calls the Render API and returns a result
-- [ ] Smoke test: submit 3 claims on the live URL; verify Redis caching works (submit same claim twice, second should return `cached: true`); verify recent-searches feed populates — Done when: all 3 pass
+- [ ] Smoke test: submit 3 claims on the live URL; verify Turso caching works (submit same claim twice, second should return `cached: true`); verify recent-searches feed populates — Done when: all 3 pass
 - [ ] Add Render keep-alive: GitHub Actions scheduled workflow pings `/health` every 14 minutes to prevent Render free-tier cold starts — Done when: workflow committed; Render logs show regular pings
 - [ ] Gate: public URL serves the full flow end-to-end; health endpoint returns 200; `/recent-searches` returns data
 

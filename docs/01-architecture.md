@@ -8,8 +8,8 @@ User (Next.js)
   ▼
 FastAPI (Render)
   │ Cache key: SHA-256("{claim.lower().strip()}:{source_mode}")
-  ├─ Redis HIT → return VerifyResponse { cached: true }
-  └─ Redis MISS
+  ├─ Turso cache HIT (expires_at > now) → return VerifyResponse { cached: true }
+  └─ Turso cache MISS
        │
        ▼
   LangGraph pipeline (5 agents, sequential)
@@ -21,7 +21,7 @@ FastAPI (Render)
        └─ CriticAgent       → Gemini: override if confidence < 0.5 or evidence contradicts
        │
        ▼
-  Store → Redis (TTL 7d) + Supabase `searches` row
+  Store → Turso `cache` (TTL 7d via expires_at) + Turso `searches` row
        │
        ▼
   return VerifyResponse { cached: false }

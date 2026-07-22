@@ -4,13 +4,13 @@
 > what the project is, how it's built, and where things are. **Keep it in sync** — update it
 > whenever the stack, structure, conventions, or status changes.
 
-_Last updated: 2026-06-26_
+_Last updated: 2026-07-21_
 
 ---
 
 ## What it is
 
-FactCheck is an open-source, domain-agnostic fact-checking platform for the general public. Users submit any claim or quote — immigration policy, political news, government statistics, anything — and get back a calibrated verdict (supported / refuted / contested / insufficient evidence) with cited, credibility-scored sources and a plain-English explanation. The platform runs a Python + LangGraph multi-agent pipeline (5 agents: decompose → retrieve → score → synthesize → critique) backed by Gemini 2.5 Flash-Lite and Tavily real-time web search. Results are cached in Redis with a 7-day TTL so repeated queries never re-run the pipeline. All searches are public — anyone can see what others have checked. The same FastAPI backend is designed to serve as the engine for future domain-specific chatbots (H1B visa checker, political news verifier, etc.) via the same `POST /verify` endpoint.
+FactCheck is an open-source, domain-agnostic fact-checking platform for the general public. Users submit any claim or quote — immigration policy, political news, government statistics, anything — and get back a calibrated verdict (supported / refuted / contested / insufficient evidence) with cited, credibility-scored sources and a plain-English explanation. The platform runs a Python + LangGraph multi-agent pipeline (5 agents: decompose → retrieve → score → synthesize → critique) backed by Gemini 2.5 Flash-Lite and Tavily real-time web search. Results are cached in Turso (libSQL) with a 7-day TTL so repeated queries never re-run the pipeline. All searches are public — anyone can see what others have checked. The same FastAPI backend is designed to serve as the engine for future domain-specific chatbots (H1B visa checker, political news verifier, etc.) via the same `POST /verify` endpoint.
 
 ---
 
@@ -24,8 +24,7 @@ FactCheck is an open-source, domain-agnostic fact-checking platform for the gene
 | Agent orchestration | LangGraph | 1.2.6 (confirmed June 2026) | v1.0 shipped Oct 2025 — avoid pre-1.0 tutorials |
 | LLM | Gemini 2.5 Flash-Lite | latest (verify: ai.google.dev/gemini-api/docs/pricing) | via langchain-google-genai; free tier + $0.10/1M tokens |
 | Web search | Tavily | latest Python SDK (verify: docs.tavily.com) | 1,000 free searches/month, no card required |
-| Result cache | Upstash Redis | serverless (verify: upstash.com/docs) | 7-day TTL per query; free tier |
-| Search history DB | Supabase (Postgres) | free tier | Persistent recent-searches feed |
+| Cache + history DB | Turso (libSQL) | libsql-client 0.3.1 (verify: docs.turso.tech) | Single DB: result cache (app-enforced 7-day TTL) + recent-searches feed; free tier |
 | Frontend hosting | Vercel | free tier | Git-integrated auto-deploy |
 | Backend hosting | Render | free tier | Cold starts expected; keep-alive pings via GitHub Actions |
 | Testing (backend) | pytest | 8.x | |
@@ -43,17 +42,17 @@ Request/data flow:
 1. User submits claim + source mode (strict/flexible) via Next.js frontend
 2. Frontend calls `POST /verify` on FastAPI backend (Render)
 3. Backend computes cache key: `SHA-256("{claim.lower().strip()}:{source_mode}")`
-4. **Cache hit (Redis):** return stored VerifyResponse with `cached: true`
+4. **Cache hit (Turso):** return stored VerifyResponse with `cached: true` (rows past `expires_at` are ignored — TTL is enforced in-app, not by the DB)
 5. **Cache miss:** run LangGraph 5-agent pipeline:
    - **ClaimDecomposer** → breaks claim into 1–4 verifiable sub-claims
    - **EvidenceRetriever** → Tavily search per sub-claim (strict: gov/academic filter; flexible: all results)
    - **SourceScorer** → scores domains (gov=1.0, academic=0.85, news=0.7, other=0.4); filters < 0.4
    - **SynthesisAgent** (Gemini) → verdict + confidence (0–1) + reasoning; instructed to output `insufficient_evidence` when evidence is thin
    - **CriticAgent** (Gemini) → reviews synthesis; overrides to `insufficient_evidence` if confidence < 0.5; overrides to `contested` if evidence contradicts
-6. Store result in Redis (7-day TTL) + insert row in Supabase `searches` table
+6. Store result in Turso `cache` table (7-day TTL via `expires_at`) + insert row in Turso `searches` table
 7. Return VerifyResponse to frontend
 8. Frontend renders verdict badge, confidence bar, reasoning, source cards
-9. Recent searches feed: `GET /recent-searches` reads Supabase `searches` ordered by `searched_at desc`
+9. Recent searches feed: `GET /recent-searches` reads Turso `searches` ordered by `searched_at desc`
 
 ---
 
@@ -72,11 +71,12 @@ factcheck/
 │   │   │   │   └── critic.py
 │   │   │   ├── features/
 │   │   │   │   ├── verify/           # pipeline orchestration + /verify endpoint
-│   │   │   │   ├── cache/            # Redis cache layer (get/set with TTL)
-│   │   │   │   └── history/          # Supabase recent-searches CRUD
+│   │   │   │   ├── cache/            # Turso result cache (get/set, app-enforced TTL)
+│   │   │   │   └── history/          # Turso recent-searches CRUD
 │   │   │   ├── lib/
 │   │   │   │   ├── gemini.py         # Gemini client singleton
 │   │   │   │   ├── tavily.py         # Tavily client + source-mode filter
+│   │   │   │   ├── turso.py          # shared libSQL client (cache + history)
 │   │   │   │   └── types.py          # shared Pydantic models
 │   │   │   └── main.py               # FastAPI app, CORS, route registration
 │   │   ├── tests/
@@ -145,19 +145,23 @@ factcheck/
 | 0. Spike | ✅ done | Pipeline proven: 5/5 verdicts defensible after critic fix. See [docs/02-spike-results.md](docs/02-spike-results.md) |
 | 1. Scaffold | ✅ done | Both apps run locally; CI configured; lint/typecheck/test/health all green |
 | 2. Core Pipeline | ✅ done | 5-agent LangGraph wired; POST /verify end-to-end; 20/20 tests pass (live), CI-safe |
-| 3. Cache + Storage | 🟡 code-complete | Redis cache + Supabase history + GET /recent-searches built; degrades gracefully. Live gate pending user provisioning of Upstash + Supabase (run apps/api/migrations/001_searches.sql) |
+| 3. Cache + Storage | ✅ done | Turso (libSQL) cache + history + GET /recent-searches built; degrades gracefully. **Turso DB `factcheck` provisioned, schema applied, and cache roundtrip + 7-day-TTL expiry + history insert/recent verified live against the cloud DB.** Full HTTP two-POST smoke happens once the server runs (M5). |
 | 4. Frontend | ☐ todo | Next.js full flow |
 | 5. Deploy | ☐ todo | Render + Vercel |
 | 6. Polish | ☐ todo | Error states, mobile, README |
 
-**In progress now:** Milestones 0–2 done; M3 code-complete (caching/history/recent-searches built,
-  graceful degradation, caching flow tested). Next live work needs external services.
+**In progress now:** Milestones 0–3 done. Turso DB `factcheck` is provisioned (group `default`,
+  aws-us-east-1), schema applied, credentials in `apps/api/.env` (gitignored), and the cache/history
+  code paths are verified live against the cloud DB.
 **Next up:**
-  1. USER ACTION to finish M3 live gate: create a free Upstash Redis DB and a free Supabase project,
-     run `apps/api/migrations/001_searches.sql` in Supabase SQL editor, and put the real
-     UPSTASH_REDIS_REST_URL/TOKEN + SUPABASE_URL/SERVICE_KEY in `.env` (currently still the
-     .env.example placeholder comments). Then two identical POSTs → 2nd `cached:true`.
-  2. Milestone 4 (frontend) — can proceed in parallel; doesn't need Redis/Supabase.
+  1. Milestone 4 (frontend) — Next.js full flow. Doesn't need Turso.
+  2. Milestone 5 (deploy) — set TURSO_DATABASE_URL + TURSO_AUTH_TOKEN in Render env; the full
+     HTTP two-POST → `cached:true` smoke test runs there against the live server.
+
+Notes:
+  - Turso URL in `.env` is the `libsql://` form from the CLI; `lib/turso.py` normalizes it to the
+    `https://` HTTP transport (libsql-client 0.3.1's default `wss://` handshake is rejected by
+    current Turso servers).
 
 Open items / deferred:
   - 🟠 Gemini quota/provider: LLM client is provider-agnostic (env GEMINI_MODEL / future LLM_*),
@@ -171,7 +175,8 @@ Open items / deferred:
 
 - 2026-06-26 — **API over Python package** — frontend is Next.js (separate runtime), so FastAPI REST API is the right boundary. Domain-specific chatbots later are additional consumers of `POST /verify`.
 - 2026-06-26 — **Verdict: never binary TRUE/FALSE** — PNAS and MIT research shows binary labels mislead users. Always surface: verdict enum + confidence + raw sources + reasoning. Let users judge.
-- 2026-06-26 — **7-day Redis TTL** — immigration/political facts change frequently; 7 days balances freshness vs. Tavily API usage.
+- 2026-06-26 — **7-day cache TTL** — immigration/political facts change frequently; 7 days balances freshness vs. Tavily API usage.
+- 2026-07-21 — **Turso (libSQL) for all storage** — replaced Upstash Redis (cache) + Supabase (history) with a single Turso database. One free service instead of two; libSQL is edge-friendly for the Render backend. Trade-off: SQLite has no native key expiry, so the 7-day cache TTL is emulated (each row carries `expires_at`; reads filter it, writes sweep it). Storage isolated behind `lib/turso.py` + per-layer `is_configured()` graceful degradation, so the swap touched only the cache/history modules, the migration, and env vars. Client is `libsql-client` 0.3.1; its default `libsql://`/`wss://` (WebSocket Hrana) handshake is rejected by current Turso servers, so `lib/turso.py` normalizes the URL to the `https://` HTTP transport, which works. Verified live against the provisioned cloud DB.
 - 2026-06-26 — **Strict mode fallback** — if strict mode finds < 3 sources, auto-fallback to flexible and flag `source_mode_fallback: true`. Don't leave users with empty results.
 - 2026-06-26 — **No auth** — all searches public by design. The shared recent-searches feed is a feature.
 - 2026-06-26 — **Study Sift at Milestone 0** — Sift (LangGraph + Tavily + 5-agent) is the nearest prior art; reading it first avoids re-inventing validated patterns.

@@ -19,12 +19,7 @@ requires_tavily = pytest.mark.skipif(
     reason="TAVILY_API_KEY not set — skipping live search test",
 )
 
-requires_redis = pytest.mark.skipif(
-    not os.environ.get("UPSTASH_REDIS_REST_URL", "").startswith("http"),
-    reason="Upstash Redis not configured — skipping live cache test",
-)
-
-requires_supabase = pytest.mark.skipif(
-    not os.environ.get("SUPABASE_URL", "").startswith("http"),
-    reason="Supabase not configured — skipping live storage test",
+requires_turso = pytest.mark.skipif(
+    not os.environ.get("TURSO_DATABASE_URL", "").startswith(("libsql://", "wss://", "https://")),
+    reason="Turso not configured — skipping live storage test",
 )

@@ -1,6 +1,6 @@
 """Tests for GET /recent-searches.
 
-The endpoint works without Supabase configured (returns an empty feed), so the
+The endpoint works without Turso configured (returns an empty feed), so the
 shape test always runs. Param validation is also always testable.
 """
 
