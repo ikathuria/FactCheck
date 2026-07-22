@@ -7,7 +7,7 @@ LLM-provider decision in PROJECT.md.
 
 Env:
     GEMINI_API_KEY   required for the default Google provider
-    GEMINI_MODEL     default "gemini-2.5-flash-lite" (overridable)
+    GEMINI_MODEL     default "gemini-2.5-flash" (overridable)
     LLM_TEMPERATURE  default "0.1"
 """
 
@@ -19,7 +19,10 @@ import time
 from langchain_core.messages import HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-DEFAULT_MODEL = "gemini-2.5-flash-lite"
+# gemini-2.5-flash (not flash-lite): stronger instruction-following and
+# calibration for the synthesis/critic agents, still on Gemini's free tier
+# (~1.5k requests/day). Overridable via GEMINI_MODEL.
+DEFAULT_MODEL = "gemini-2.5-flash"
 
 _llm: ChatGoogleGenerativeAI | None = None
 

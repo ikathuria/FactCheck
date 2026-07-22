@@ -57,7 +57,7 @@ Studied: 2026-06-26
 
 | Sift | Our version | Reason |
 |---|---|---|
-| LLaMA 3.3 70B via Groq | Gemini 2.5 Flash-Lite via langchain-google-genai | User has Gemini API key; free tier; $0.10/1M tokens |
+| LLaMA 3.3 70B via Groq | Gemini 2.5 Flash via langchain-google-genai | User has Gemini API key; free tier (~1.5k req/day) |
 | pgvector + HyDE | Removed — no pre-indexed embeddings | We do real-time RAG only; no corpus to pre-index |
 | Celery background workers | Removed — FastAPI async | Prototype scale; Celery is over-engineering for now |
 | Correction Agent (5th) | Merged into CriticAgent | Sift's Correction Agent cited sources that EvidenceRetriever already has; we surface them directly |
@@ -169,14 +169,14 @@ Sources with score < 0.4 are filtered out. In current scoring, minimum is 0.4 (t
 
 ---
 
-## Gemini 2.5 Flash-Lite via langchain-google-genai (v4.2.1)
+## Gemini 2.5 Flash via langchain-google-genai (v4.2.1)
 
 ```python
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash-lite",
+    model="gemini-2.5-flash",  # default; override via GEMINI_MODEL
     google_api_key=GEMINI_API_KEY,
     temperature=0.1,
 )

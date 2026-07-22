@@ -39,7 +39,7 @@ See [RESEARCH.md](RESEARCH.md) for full competitor analysis, community signals, 
 Sift (https://dev.to/ashg2099/i-built-an-open-source-multi-agent-fact-checker-heres-how-it-works-5eah) is the nearest open-source analog. Study before building:
 - **Reuse:** 5-agent LangGraph pattern (ClaimDecomposer → EvidenceRetriever → SourceScorer → SynthesisAgent → CriticAgent)
 - **Reuse:** LangGraph conditional branching for agent routing
-- **Adapt:** swap LLaMA 3.3 70B → Gemini 2.5 Flash-Lite; remove Celery (use FastAPI async); remove pgvector (real-time RAG doesn't need pre-indexed embeddings); add a Turso result caching layer; add source-mode toggle (strict vs. flexible)
+- **Adapt:** swap LLaMA 3.3 70B → Gemini 2.5 Flash; remove Celery (use FastAPI async); remove pgvector (real-time RAG doesn't need pre-indexed embeddings); add a Turso result caching layer; add source-mode toggle (strict vs. flexible)
 
 ### Monetization
 Portfolio / open source — not applicable.
@@ -52,7 +52,7 @@ Portfolio / open source — not applicable.
 |---|---|---|---|
 | LLM returns confident wrong verdict | high | high | Never show binary TRUE/FALSE; always show confidence level + "insufficient evidence" option; always surface raw sources |
 | Tavily free tier (1k/mo) exhausted quickly | medium | medium | Cache all results in Turso with 1-week TTL; same query never re-runs pipeline within TTL window |
-| Gemini free tier rate-limited | medium | low | Implement retry with exponential backoff; Gemini 2.5 Flash-Lite is very cheap at pay-as-you-go ($0.10/1M tokens) |
+| Gemini free tier rate-limited | medium | low | Free tier is ~1.5k req/day (fresh key); retry with exponential backoff is already in the client; Gemini 2.5 Flash is cheap at pay-as-you-go if needed |
 | Render free tier cold starts (slow first load) | high | low | Show loading state on frontend; keep API warm with lightweight health-check pings |
 | Political bias perception | medium | high | Never show verdict labels ("TRUE"/"FALSE"); show sources + confidence + reasoning; let users decide |
 | Brave Search free tier killed in 2026 | already happened | — | Use Tavily (no card required, 1k free/mo) as primary |
@@ -71,7 +71,7 @@ Portfolio / open source — not applicable.
 | Backend framework | FastAPI | 0.115.x (verify: fastapi.tiangolo.com) | Python ecosystem, async, auto-docs |
 | Backend language | Python | 3.12 | LangGraph requirement |
 | Agent orchestration | LangGraph | 1.2.6 (confirmed June 2026) | Multi-agent conditional routing; v1.0 shipped Oct 2025 |
-| LLM | Gemini 2.5 Flash-Lite via langchain-google-genai | latest (verify: ai.google.dev) | User has Gemini API key; free tier + cheap PAYG |
+| LLM | Gemini 2.5 Flash via langchain-google-genai | latest (verify: ai.google.dev) | User has Gemini API key; free tier (~1.5k req/day) + cheap PAYG; model via `GEMINI_MODEL` |
 | Web search / RAG | Tavily Python SDK | latest (verify: docs.tavily.com) | No credit card for free tier; 1k free searches/mo; used in Sift |
 | Cache + history DB | Turso (libSQL) | libsql-client 0.3.1 (verify: docs.turso.tech) | Single DB for result cache + recent-searches feed; free tier; edge-friendly. TTL emulated in-app (SQLite has no native key expiry) |
 | Frontend hosting | Vercel | free tier | Git-integrated auto-deploy for Next.js |

@@ -10,7 +10,7 @@ _Last updated: 2026-07-21_
 
 ## What it is
 
-FactCheck is an open-source, domain-agnostic fact-checking platform for the general public. Users submit any claim or quote — immigration policy, political news, government statistics, anything — and get back a calibrated verdict (supported / refuted / contested / insufficient evidence) with cited, credibility-scored sources and a plain-English explanation. The platform runs a Python + LangGraph multi-agent pipeline (5 agents: decompose → retrieve → score → synthesize → critique) backed by Gemini 2.5 Flash-Lite and Tavily real-time web search. Results are cached in Turso (libSQL) with a 7-day TTL so repeated queries never re-run the pipeline. All searches are public — anyone can see what others have checked. The same FastAPI backend is designed to serve as the engine for future domain-specific chatbots (H1B visa checker, political news verifier, etc.) via the same `POST /verify` endpoint.
+FactCheck is an open-source, domain-agnostic fact-checking platform for the general public. Users submit any claim or quote — immigration policy, political news, government statistics, anything — and get back a calibrated verdict (supported / refuted / contested / insufficient evidence) with cited, credibility-scored sources and a plain-English explanation. The platform runs a Python + LangGraph multi-agent pipeline (5 agents: decompose → retrieve → score → synthesize → critique) backed by Gemini 2.5 Flash and Tavily real-time web search. Results are cached in Turso (libSQL) with a 7-day TTL so repeated queries never re-run the pipeline. All searches are public — anyone can see what others have checked. The same FastAPI backend is designed to serve as the engine for future domain-specific chatbots (H1B visa checker, political news verifier, etc.) via the same `POST /verify` endpoint.
 
 ---
 
@@ -22,7 +22,7 @@ FactCheck is an open-source, domain-agnostic fact-checking platform for the gene
 | Frontend styling | Tailwind CSS | 4.x (verify before coding) | |
 | Backend framework | FastAPI | 0.115.x (verify before coding) | Python 3.12, async |
 | Agent orchestration | LangGraph | 1.2.6 (confirmed June 2026) | v1.0 shipped Oct 2025 — avoid pre-1.0 tutorials |
-| LLM | Gemini 2.5 Flash-Lite | latest (verify: ai.google.dev/gemini-api/docs/pricing) | via langchain-google-genai; free tier + $0.10/1M tokens |
+| LLM | Gemini 2.5 Flash | latest (verify: ai.google.dev/gemini-api/docs/pricing) | via langchain-google-genai; free tier (~1.5k req/day). Model set by `GEMINI_MODEL` (default `gemini-2.5-flash`) — provider swap is a config change |
 | Web search | Tavily | latest Python SDK (verify: docs.tavily.com) | 1,000 free searches/month, no card required |
 | Cache + history DB | Turso (libSQL) | libsql-client 0.3.1 (verify: docs.turso.tech) | Single DB: result cache (app-enforced 7-day TTL) + recent-searches feed; free tier |
 | Frontend hosting | Vercel | free tier | Git-integrated auto-deploy |
@@ -165,10 +165,11 @@ Notes:
     current Turso servers).
 
 Open items / deferred:
-  - 🟠 Gemini quota/provider: LLM client is provider-agnostic (env GEMINI_MODEL / future LLM_*),
-    so Gemini/Grok/Claude is a config swap. flash-lite free tier on the current key caps at
-    ~20 req/day (heavy spike+test usage drains it; a clean free-tier key gives ~1,500/day).
-    Tests/curl today used GEMINI_MODEL=gemini-2.5-flash. User chose to revisit LLM later.
+  - ✅ LLM resolved (2026-07-22): default model is now `gemini-2.5-flash` (was `flash-lite`) —
+    stronger instruction-following/calibration for the synthesis + critic agents, still on
+    Gemini's free tier (~1.5k req/day, up from the drained key's ~20/day). Set via `GEMINI_MODEL`;
+    the client stays provider-agnostic, so Claude/DeepSeek is a later config swap if quality
+    demands it. Needs a clean free-tier `GEMINI_API_KEY` in `apps/api/.env`.
 
 ---
 
@@ -178,6 +179,7 @@ Open items / deferred:
 - 2026-06-26 — **Verdict: never binary TRUE/FALSE** — PNAS and MIT research shows binary labels mislead users. Always surface: verdict enum + confidence + raw sources + reasoning. Let users judge.
 - 2026-06-26 — **7-day cache TTL** — immigration/political facts change frequently; 7 days balances freshness vs. Tavily API usage.
 - 2026-07-21 — **Turso (libSQL) for all storage** — replaced Upstash Redis (cache) + Supabase (history) with a single Turso database. One free service instead of two; libSQL is edge-friendly for the Render backend. Trade-off: SQLite has no native key expiry, so the 7-day cache TTL is emulated (each row carries `expires_at`; reads filter it, writes sweep it). Storage isolated behind `lib/turso.py` + per-layer `is_configured()` graceful degradation, so the swap touched only the cache/history modules, the migration, and env vars. Client is `libsql-client` 0.3.1; its default `libsql://`/`wss://` (WebSocket Hrana) handshake is rejected by current Turso servers, so `lib/turso.py` normalizes the URL to the `https://` HTTP transport, which works. Verified live against the provisioned cloud DB.
+- 2026-07-22 — **LLM: Gemini 2.5 Flash (not Flash-Lite)** — bumped the default model for better instruction-following and calibration on the synthesis/critic agents (the verdict-quality-sensitive steps), while staying on Gemini's free tier (~1.5k req/day). One-line change (`DEFAULT_MODEL` in `lib/gemini.py`, overridable via `GEMINI_MODEL`) since the client already targets Gemini. Considered Claude Haiku 4.5 (best cheap-tier instruction-following) and DeepSeek-V4 (cheapest capable) but both need a client swap and break the $0/month goal; the client stays provider-agnostic so that remains a future config swap if verdict quality demands it. The earlier "~20 req/day" pain was a drained key, not a provider ceiling.
 - 2026-06-26 — **Strict mode fallback** — if strict mode finds < 3 sources, auto-fallback to flexible and flag `source_mode_fallback: true`. Don't leave users with empty results.
 - 2026-06-26 — **No auth** — all searches public by design. The shared recent-searches feed is a feature.
 - 2026-06-26 — **Study Sift at Milestone 0** — Sift (LangGraph + Tavily + 5-agent) is the nearest prior art; reading it first avoids re-inventing validated patterns.
