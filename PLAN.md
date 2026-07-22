@@ -406,16 +406,16 @@ Tasks:
 **Goal:** A real user can submit a claim, see a verdict with sources, browse recent searches, and view the metrics dashboard.
 
 Tasks:
-- [ ] Build typed API client in `apps/web/src/lib/api.ts`: `verifyClaim(claim, sourceMode)` and `getRecentSearches(limit, offset)` typed to match backend responses — Done when: TypeScript compiles without errors; `tsc --noEmit` passes
-- [ ] Build metrics dashboard section in `apps/web/src/features/metrics/MetricsDashboard.tsx`: static stat cards (NewsGuard 35%, Full Fact 80%, Poynter 3:1) + live counters from recent-searches endpoint (total claims, verdict breakdown) — Done when: component renders in browser with all 3 static stats visible; live counters show 0 when DB is empty
-- [ ] Build claim search feature in `apps/web/src/features/search/`: `ClaimInput.tsx` (textarea, 500-char limit, char counter), `SourceModeToggle.tsx` (Strict / Flexible), `SearchForm.tsx` composing both — Done when: form renders, char limit enforced, toggle switches state, submit calls `verifyClaim` API
-- [ ] Build results display in `apps/web/src/features/results/`: `VerdictBadge.tsx` (color-coded: green=supported, red=refuted, yellow=contested, grey=insufficient_evidence), `ConfidenceBar.tsx`, `ReasoningCard.tsx`, `SourceCard.tsx` (shows title, domain, credibility score bar, snippet, domain type badge), `ResultsPanel.tsx` composing all — Done when: manually passing a mock VerifyResponse renders all components without error
-- [ ] Build recent searches feed in `apps/web/src/features/recent/RecentSearches.tsx`: paginated list, each item shows claim snippet + verdict badge + confidence + time ago; clicking loads cached result — Done when: feed renders with mocked data; click navigates to a pre-filled search result
-- [ ] Wire home page in `apps/web/src/app/page.tsx`: MetricsDashboard → SearchForm → (on submit) ResultsPanel; RecentSearches in sidebar or below — Done when: full flow works in browser: type claim → click submit → see loading states → see results
-- [ ] Add loading states: show step-by-step progress ("Decomposing claim…", "Searching sources…", "Synthesizing verdict…") using polling or a simple animated sequence timed to average pipeline duration — Done when: loading state visible for ≥2 seconds between submit and results
-- [ ] Vitest unit tests for `VerdictBadge`, `ConfidenceBar`, `SourceCard` — Done when: `npm --prefix apps/web run test` passes
-- [ ] E2E happy path test (Playwright): load page → type claim → toggle to Strict mode → submit → verify ResultsPanel renders with at least one source card — Done when: `npx playwright test` passes
-- [ ] Gate: `npm --prefix apps/web run lint` passes; `npm --prefix apps/web run test` passes; Playwright E2E passes; full flow works manually in browser
+- [x] Build typed API client in `apps/web/src/lib/api.ts`: `verifyClaim(claim, sourceMode)` and `getRecentSearches(limit, offset)` typed to match backend responses — Done: typed, `AbortSignal` support, `ApiError`; `tsc --noEmit` passes
+- [x] Build metrics dashboard section in `apps/web/src/features/metrics/MetricsDashboard.tsx`: static stat cards + live counters from recent-searches endpoint (total claims, verdict breakdown) — Done: 3 static stats (NewsGuard 35%, Full Fact 80%, MIT 6×) + live total & verdict-dot breakdown; shows `—`/0 and degrades gracefully when the API is down
+- [x] Build claim search feature in `apps/web/src/features/search/`: `ClaimInput.tsx` (textarea, 500-char limit, char counter), `SourceModeToggle.tsx` (Strict / Flexible), `SearchForm.tsx` composing both — Done: char limit enforced, toggle is an accessible radiogroup, submit disabled when empty/loading
+- [x] Build results display in `apps/web/src/features/results/`: `VerdictBadge.tsx` (color-coded), `ConfidenceBar.tsx`, `ReasoningCard.tsx`, `SourceCard.tsx`, `ResultsPanel.tsx` composing all — Done: all render from a `VerifyResponse`; source-mode-fallback + cache-age notes included
+- [x] Build recent searches feed in `apps/web/src/features/recent/RecentSearches.tsx`: paginated list, each item shows claim snippet + verdict badge + confidence + time ago; clicking re-runs the claim (served from cache) — Done: `Load more` pagination; clicking an item calls `onSelect` → `runSearch`; reloads after each new search
+- [x] Wire home page in `apps/web/src/app/page.tsx`: MetricsDashboard → SearchForm → (on submit) ResultsPanel; RecentSearches below — Done: client component owns state + `runSearch` (with `AbortController`); error banner on failure
+- [x] Add loading states: step-by-step progress ("Decomposing…", "Searching…", "Scoring…", "Synthesizing…", "Reviewing…") via an animated sequence in `SearchProgress.tsx` — Done: `aria-live` status, advances every 1.5s while the single POST is in flight
+- [x] Vitest unit tests for `VerdictBadge`, `ConfidenceBar`, `SourceCard` — Done: 13 tests pass (`vitest.config.mts`; threads pool for sandbox compatibility)
+- [x] E2E happy path test (Playwright): load page → type claim → toggle to Strict → submit → verify ResultsPanel renders with a source card — Done: `e2e/happy-path.spec.ts` with network-mocked API (deterministic, no live backend); passes
+- [x] Gate: lint passes; `npm run test` passes (13); Playwright E2E passes (1); `next build` compiles clean; full flow verified in a real browser via the E2E — Done
 
 ---
 

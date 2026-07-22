@@ -146,17 +146,18 @@ factcheck/
 | 1. Scaffold | ✅ done | Both apps run locally; CI configured; lint/typecheck/test/health all green |
 | 2. Core Pipeline | ✅ done | 5-agent LangGraph wired; POST /verify end-to-end; 20/20 tests pass (live), CI-safe |
 | 3. Cache + Storage | ✅ done | Turso (libSQL) cache + history + GET /recent-searches built; degrades gracefully. **Turso DB `factcheck` provisioned, schema applied, and cache roundtrip + 7-day-TTL expiry + history insert/recent verified live against the cloud DB.** Full HTTP two-POST smoke happens once the server runs (M5). |
-| 4. Frontend | ☐ todo | Next.js full flow |
+| 4. Frontend | ✅ done | Next.js 16 full flow: metrics dashboard, search form (claim + strict/flexible), animated pipeline progress, results (verdict/confidence/reasoning/sources), paginated recent-searches feed. 13 Vitest units + 1 Playwright E2E (network-mocked) pass; lint + `next build` clean. |
 | 5. Deploy | ☐ todo | Render + Vercel |
 | 6. Polish | ☐ todo | Error states, mobile, README |
 
-**In progress now:** Milestones 0–3 done. Turso DB `factcheck` is provisioned (group `default`,
-  aws-us-east-1), schema applied, credentials in `apps/api/.env` (gitignored), and the cache/history
-  code paths are verified live against the cloud DB.
+**In progress now:** Milestones 0–4 done. Turso DB `factcheck` provisioned + verified live; the
+  Next.js frontend is built and fully wired (search → pipeline progress → results → recent feed),
+  with unit + E2E tests, lint, and production build all green.
 **Next up:**
-  1. Milestone 4 (frontend) — Next.js full flow. Doesn't need Turso.
-  2. Milestone 5 (deploy) — set TURSO_DATABASE_URL + TURSO_AUTH_TOKEN in Render env; the full
-     HTTP two-POST → `cached:true` smoke test runs there against the live server.
+  1. Milestone 5 (deploy) — backend on Render (set GEMINI/TAVILY/TURSO/ALLOWED_ORIGINS env),
+     frontend on Vercel (root dir `apps/web`, set NEXT_PUBLIC_API_URL). The full HTTP two-POST →
+     `cached:true` smoke test runs there against the live server.
+  2. Milestone 6 (polish) — error states, mobile, README.
 
 Notes:
   - Turso URL in `.env` is the `libsql://` form from the CLI; `lib/turso.py` normalizes it to the
