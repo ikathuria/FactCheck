@@ -145,21 +145,26 @@ factcheck/
 | 0. Spike | ✅ done | Pipeline proven: 5/5 verdicts defensible after critic fix. See [docs/02-spike-results.md](docs/02-spike-results.md) |
 | 1. Scaffold | ✅ done | Both apps run locally; CI configured; lint/typecheck/test/health all green |
 | 2. Core Pipeline | ✅ done | 5-agent LangGraph wired; POST /verify end-to-end; 20/20 tests pass (live), CI-safe |
-| 3. Cache + Storage | ✅ done | Turso (libSQL) cache + history + GET /recent-searches built; degrades gracefully. **Turso DB `factcheck` provisioned, schema applied, and cache roundtrip + 7-day-TTL expiry + history insert/recent verified live against the cloud DB.** Full HTTP two-POST smoke happens once the server runs (M5). |
-| 4. Frontend | ✅ done | Next.js 16 full flow: metrics dashboard, search form (claim + strict/flexible), animated pipeline progress, results (verdict/confidence/reasoning/sources), paginated recent-searches feed. 13 Vitest units + 1 Playwright E2E (network-mocked) pass; lint + `next build` clean. |
-| 5. Deploy | ☐ todo | Render + Vercel |
-| 6. Polish | ☐ todo | Error states, mobile, README |
+| 3. Cache + Storage | ✅ done | Turso (libSQL) cache + history + GET /recent-searches built; degrades gracefully. Turso DB `factcheck` provisioned, schema applied. **Verified live end-to-end 2026-07-23: two identical POSTs → 2nd `cached:true`; recent-searches feed populated.** |
+| 4. Frontend | ✅ done | Next.js 16 full flow: metrics dashboard, search form (claim + strict/flexible), animated pipeline progress, results (verdict/confidence/reasoning/sources), paginated recent-searches feed. 13 Vitest units + 1 Playwright E2E pass; lint + `next build` clean. **Run live 2026-07-23 against real Gemini/Tavily/Turso — verdict, source scoring, cache hit, and history all confirmed in the UI.** |
+| 5. Deploy | ☐ todo | Render (API) + Vercel (web) |
+| 6. Polish | ☐ todo | Error states, mobile, source-scoring tiers |
 
-**In progress now:** Milestones 0–4 done. Turso DB `factcheck` provisioned + verified live; the
-  Next.js frontend is built and fully wired (search → pipeline progress → results → recent feed),
-  with unit + E2E tests, lint, and production build all green.
+**In progress now:** Milestones 0–4 done **and validated live end-to-end** (local, 2026-07-23) —
+  real Gemini 2.5 Flash synthesis, Tavily sources, Turso cache (`cached:true` on repeat) and history,
+  rendered in the Next.js UI. Docs updated to match.
 **Next up:**
   1. Milestone 5 (deploy) — backend on Render (set GEMINI/TAVILY/TURSO/ALLOWED_ORIGINS env),
-     frontend on Vercel (root dir `apps/web`, set NEXT_PUBLIC_API_URL). The full HTTP two-POST →
-     `cached:true` smoke test runs there against the live server.
-  2. Milestone 6 (polish) — error states, mobile, README.
+     frontend on Vercel (root dir `apps/web`, set NEXT_PUBLIC_API_URL). Render's Linux runtime
+     avoids the local macOS cert quirk (see Notes).
+  2. Milestone 6 (polish) — error states, mobile, source-scoring tiers (Wikipedia/Britannica > 0.4).
 
-Notes:
+Notes / local-dev gotchas (full run guide in [README.md](README.md)):
+  - Backend loads `apps/api/.env` (preferred over repo-root `.env`) — put all backend keys there.
+  - `uvicorn --reload` does NOT reload `.env` (watches `.py` only) — restart uvicorn after editing env.
+  - macOS python.org Python 3.14 has no CA bundle → libSQL's aiohttp transport fails Turso calls with
+    `CERTIFICATE_VERIFY_FAILED`. Fix: `export SSL_CERT_FILE="$(python -c 'import certifi; print(certifi.where())')"`
+    before uvicorn (or run the installer's `Install Certificates.command`). Linux/Render unaffected.
   - Turso URL in `.env` is the `libsql://` form from the CLI; `lib/turso.py` normalizes it to the
     `https://` HTTP transport (libsql-client 0.3.1's default `wss://` handshake is rejected by
     current Turso servers).

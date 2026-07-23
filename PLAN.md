@@ -398,7 +398,7 @@ Tasks:
 - [x] Implement cache key generation `SHA-256("{claim.strip().lower()}:{source_mode}")` — Done: casing/whitespace-insensitive; tested (5 unit tests, no keys)
 - [x] Update `POST /verify` handler: check cache → pipeline → store Turso cache + Turso searches; set `cached`/`cached_at`/`ttl_expires_at` — Done: **cache hit/miss flow verified deterministically** (stubbed pipeline + in-memory cache: 2nd identical POST returns `cached:true`, pipeline runs once)
 - [x] Implement `GET /recent-searches` (paginated, `searched_at desc`) — Done: registered; shape + param-validation tests pass (returns empty feed until Turso configured)
-- [x] Gate: pytest passes (non-live suite green; live tests skip-guarded); caching flow verified — Done: **cache roundtrip + 7-day-TTL expiry + history insert/recent verified live against the provisioned Turso cloud DB** (test rows cleaned up). Full HTTP two-POST → `cached:true` smoke runs against the live server at deploy (M5).
+- [x] Gate: pytest passes (non-live suite green; live tests skip-guarded); caching flow verified — Done: cache roundtrip + 7-day-TTL expiry + history insert/recent verified live against the provisioned Turso cloud DB. **Full HTTP two-POST → `cached:true` smoke confirmed on the running server 2026-07-23; recent-searches feed populated.**
 
 ---
 
@@ -415,7 +415,7 @@ Tasks:
 - [x] Add loading states: step-by-step progress ("Decomposing…", "Searching…", "Scoring…", "Synthesizing…", "Reviewing…") via an animated sequence in `SearchProgress.tsx` — Done: `aria-live` status, advances every 1.5s while the single POST is in flight
 - [x] Vitest unit tests for `VerdictBadge`, `ConfidenceBar`, `SourceCard` — Done: 13 tests pass (`vitest.config.mts`; threads pool for sandbox compatibility)
 - [x] E2E happy path test (Playwright): load page → type claim → toggle to Strict → submit → verify ResultsPanel renders with a source card — Done: `e2e/happy-path.spec.ts` with network-mocked API (deterministic, no live backend); passes
-- [x] Gate: lint passes; `npm run test` passes (13); Playwright E2E passes (1); `next build` compiles clean; full flow verified in a real browser via the E2E — Done
+- [x] Gate: lint passes; `npm run test` passes (13); Playwright E2E passes (1); `next build` compiles clean; full flow verified in a real browser via the E2E — Done. **Also run live 2026-07-23 against the real backend (Gemini/Tavily/Turso): verdict, source scoring, cache hit, and history all confirmed in the UI.**
 
 ---
 
