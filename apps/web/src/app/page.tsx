@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { MetricsDashboard } from "@/features/metrics/MetricsDashboard";
 import { RecentSearches } from "@/features/recent/RecentSearches";
@@ -20,6 +20,15 @@ export default function Home() {
   const [errorMsg, setErrorMsg] = useState("");
   const [reloadToken, setReloadToken] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  // Bring the outcome into view once a check finishes — important when it was
+  // triggered from a recent-check button further down the page.
+  useEffect(() => {
+    if (status === "loading" || status === "done" || status === "error") {
+      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [status, result]);
 
   const runSearch = useCallback(async (text: string, mode: SourceMode) => {
     const trimmed = text.trim();
@@ -65,35 +74,37 @@ export default function Home() {
         </p>
       </header>
 
-      <MetricsDashboard reloadToken={reloadToken} />
+      <SearchForm
+        claim={claim}
+        sourceMode={sourceMode}
+        onClaimChange={setClaim}
+        onModeChange={setSourceMode}
+        onSubmit={() => runSearch(claim, sourceMode)}
+        loading={status === "loading"}
+      />
 
-      <div className="mt-8">
-        <SearchForm
-          claim={claim}
-          sourceMode={sourceMode}
-          onClaimChange={setClaim}
-          onModeChange={setSourceMode}
-          onSubmit={() => runSearch(claim, sourceMode)}
-          loading={status === "loading"}
-        />
+      <div ref={resultsRef} className="scroll-mt-6">
+        {status === "loading" && <SearchProgress />}
+
+        {status === "error" && (
+          <p
+            role="alert"
+            className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          >
+            {errorMsg}
+          </p>
+        )}
+
+        {status === "done" && result && (
+          <div className="mt-6">
+            <ResultsPanel result={result} />
+          </div>
+        )}
       </div>
 
-      {status === "loading" && <SearchProgress />}
-
-      {status === "error" && (
-        <p
-          role="alert"
-          className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-        >
-          {errorMsg}
-        </p>
-      )}
-
-      {status === "done" && result && (
-        <div className="mt-6">
-          <ResultsPanel result={result} />
-        </div>
-      )}
+      <div className="mt-10">
+        <MetricsDashboard reloadToken={reloadToken} />
+      </div>
 
       <RecentSearches reloadToken={reloadToken} onSelect={runSearch} />
     </main>

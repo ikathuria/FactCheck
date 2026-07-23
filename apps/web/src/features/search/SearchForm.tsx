@@ -39,7 +39,7 @@ export function SearchForm({
         <button
           type="submit"
           disabled={!canSubmit}
-          className="rounded-lg bg-zinc-900 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-lg bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {loading ? "Checking…" : "Fact-check"}
         </button>

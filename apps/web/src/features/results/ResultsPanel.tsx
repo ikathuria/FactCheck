@@ -11,6 +11,7 @@ export function ResultsPanel({ result }: { result: VerifyResponse }) {
       data-testid="results-panel"
       className="flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm"
     >
+      <h2 className="sr-only">Fact-check result</h2>
       <div>
         <p className="mb-2 text-sm text-zinc-500">Claim</p>
         <p className="text-lg font-medium text-zinc-900">{result.claim}</p>

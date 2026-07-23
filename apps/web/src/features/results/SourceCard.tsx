@@ -1,3 +1,4 @@
+import { Meter } from "@/components/Meter";
 import type { Source } from "@/lib/types";
 import { DOMAIN_META } from "@/lib/verdict";
 
@@ -40,16 +41,14 @@ export function SourceCard({ source }: { source: Source }) {
       <p className="text-xs text-zinc-500">{hostname(source.url)}</p>
       <p className="mt-2 line-clamp-3 text-sm text-zinc-600">{source.snippet}</p>
       <div className="mt-3">
-        <div className="mb-1 flex items-center justify-between text-xs text-zinc-500">
-          <span>Credibility</span>
-          <span>{pct}%</span>
-        </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200">
-          <div
-            className="h-full rounded-full bg-zinc-500"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+        <Meter
+          value={source.credibility_score}
+          label="Credibility"
+          valueLabel={`${pct}%`}
+          trackHeight="h-1.5"
+          fillClass="bg-zinc-500"
+          captionClass="text-xs text-zinc-500"
+        />
       </div>
     </article>
   );

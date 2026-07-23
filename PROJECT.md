@@ -4,7 +4,7 @@
 > what the project is, how it's built, and where things are. **Keep it in sync** — update it
 > whenever the stack, structure, conventions, or status changes.
 
-_Last updated: 2026-07-21_
+_Last updated: 2026-07-23_
 
 ---
 
@@ -85,6 +85,7 @@ factcheck/
 │   └── web/                          # Next.js frontend (TypeScript, Tailwind)
 │       ├── src/
 │       │   ├── app/                  # Next.js App Router (pages + layouts)
+│       │   ├── components/           # shared cross-feature UI primitives (e.g. Meter)
 │       │   ├── features/
 │       │   │   ├── search/           # ClaimInput, SourceModeToggle, SearchForm
 │       │   │   ├── results/          # VerdictBadge, ConfidenceBar, ReasoningCard, SourceCard
@@ -112,6 +113,7 @@ factcheck/
 - **New backend feature** → `apps/api/src/features/<name>/`
 - **New agent** → `apps/api/src/agents/<name>.py`
 - **New frontend feature** → `apps/web/src/features/<name>/`
+- **Shared UI primitive** (used across features) → `apps/web/src/components/<Name>.tsx` (e.g. `Meter` backs both the confidence and source-credibility bars)
 - **Tests:** backend in `apps/api/tests/test_<feature>.py`; frontend colocated as `<name>.test.ts`
 - **Naming:** snake_case for Python files/functions; PascalCase for React components; kebab-case for docs filenames
 - **Docs filenames:** zero-padded kebab-case (`01-architecture.md`), no spaces

@@ -113,6 +113,10 @@ The frontend defaults `NEXT_PUBLIC_API_URL` to `http://localhost:8000`. Open htt
   export SSL_CERT_FILE="$(python -c 'import certifi; print(certifi.where())')"
   ```
   …then start uvicorn, or run the installer's `Install Certificates.command` for a permanent fix. Linux (and Render) are unaffected.
+- **Turbopack "Could not find the module … in the React Client Manifest" error** (blank page / dev-overlay alert, can also fail `test:e2e`): a stale Turbopack cache. Clear it and restart:
+  ```bash
+  rm -rf apps/web/.next
+  ```
 
 ---
 

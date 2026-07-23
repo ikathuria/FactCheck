@@ -71,7 +71,7 @@ export function MetricsDashboard({ reloadToken = 0 }: { reloadToken?: number }) 
         >
           <p className="text-2xl font-bold text-zinc-900">{stat.value}</p>
           <p className="mt-1 text-xs leading-snug text-zinc-600">{stat.label}</p>
-          <p className="mt-2 text-[11px] text-zinc-400">{stat.source}</p>
+          <p className="mt-2 text-[11px] text-zinc-500">{stat.source}</p>
         </div>
       ))}
 
@@ -82,7 +82,12 @@ export function MetricsDashboard({ reloadToken = 0 }: { reloadToken?: number }) 
         </p>
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-500">
           {VERDICT_ORDER.filter((v) => breakdown[v] > 0).map((v) => (
-            <span key={v} className="inline-flex items-center gap-1">
+            <span
+              key={v}
+              className="inline-flex items-center gap-1"
+              title={`${breakdown[v]} ${VERDICT_META[v].label}`}
+              aria-label={`${breakdown[v]} ${VERDICT_META[v].label}`}
+            >
               <span
                 className={`h-1.5 w-1.5 rounded-full ${VERDICT_META[v].dot}`}
                 aria-hidden
